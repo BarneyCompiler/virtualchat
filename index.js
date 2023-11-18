@@ -1,7 +1,9 @@
 const express = require('express');
 const http = require('http');
 const socketIo = require('socket.io');
-const escapeHtml = require('escape-html'); // Add this line
+const escapeHtml = require('escape-html');
+const multer = require('multer');
+const upload = multer({ dest: 'uploads/' });
 
 const app = express();
 const server = http.createServer(app);
@@ -13,8 +15,12 @@ io.on('connection', (socket) => {
   console.log('A user connected');
 
   socket.on('chat message', (msg) => {
-    const sanitizedMsg = escapeHtml(msg); // Sanitize the message
-    io.emit('chat message', sanitizedMsg);
+    const sanitizedMsg = escapeHtml(msg.text); // Sanitize the message
+    io.emit('chat message', { text: sanitizedMsg, username: msg.username, emoji: msg.emoji });
+  });
+
+  socket.on('image', (image) => {
+    io.emit('image', image);
   });
 
   socket.on('disconnect', () => {
