@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <!-- Add these lines at the end of the head section -->
+  <link rel="stylesheet" href="https://unpkg.com/emoji-mart/css/emoji-mart.css" />
+  <script src="https://unpkg.com/emoji-mart"></script>
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -23,21 +26,27 @@
       margin-top: 20px;
     }
 
-    form input {
-      flex: 1;
-      padding: 10px;
+    form input,
+    form button,
+    form #emojiButton {
       border: none;
       border-radius: 5px;
       margin-right: 10px;
+      cursor: pointer;
     }
 
-    form button {
+    form input {
+      flex: 1;
       padding: 10px;
-      border: none;
-      border-radius: 5px;
-      background-color: #4CAF50; /* Green color for the send button */
-      color: #ffffff; /* Text color for the send button */
-      cursor: pointer;
+      background-color: #333333; /* Darker background color for input boxes */
+      color: #ffffff; /* Text color for input boxes */
+    }
+
+    form button,
+    form #emojiButton {
+      padding: 10px;
+      background-color: #4CAF50; /* Green color for buttons */
+      color: #ffffff; /* Text color for buttons */
     }
 
     ul {
@@ -62,10 +71,14 @@
 <body>
   <div id="container">
     <ul id="messages"></ul>
+    <!-- Add these lines after the existing form -->
     <form id="form" action="">
       <input id="username" placeholder="Username" autocomplete="off" required />
+      <div id="emojiContainer"></div>
       <input id="m" placeholder="Message" autocomplete="off" required />
       <button>Send</button>
+      <button id="emojiButton">😊</button>
+      <input type="file" id="fileInput" accept="image/*" />
     </form>
   </div>
   <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
@@ -77,11 +90,25 @@
       const usernameInput = document.querySelector('#username');
       const messageInput = document.querySelector('#m');
       const messages = document.querySelector('#messages');
+      const emojiPicker = new EmojiPicker({ 
+        locale: 'en',
+        style: 'native',
+        emojiTooltip: true,
+      });
+
+      // Emoji picker setup
+      emojiPicker.on('emoji', (emoji) => {
+        messageInput.value += emoji.native;
+      });
 
       form.addEventListener('submit', (e) => {
         e.preventDefault();
         if (usernameInput.value && messageInput.value) {
-          const msg = `${usernameInput.value}: ${messageInput.value}`;
+          const msg = {
+            text: messageInput.value,
+            username: usernameInput.value,
+            emoji: null, // You can modify this to include emoji information if needed
+          };
           socket.emit('chat message', msg);
           messageInput.value = '';
         }
@@ -89,9 +116,32 @@
 
       socket.on('chat message', (msg) => {
         const item = document.createElement('li');
-        item.innerHTML = `<span class="message">${msg}</span>`;
+        const emojiSpan = msg.emoji ? `<span>${msg.emoji}</span>` : '';
+        item.innerHTML = `<span class="message">${msg.username}: ${emojiSpan} ${msg.text}</span>`;
         messages.appendChild(item);
         window.scrollTo(0, document.body.scrollHeight);
+      });
+
+      // Image upload setup (replace input with your own file input)
+      const fileInput = document.getElementById('fileInput');
+      fileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (file) {
+          const reader = new FileReader();
+          reader.onload = (readerEvent) => {
+            const imageData = {
+              username: usernameInput.value,
+              image: readerEvent.target.result,
+            };
+            socket.emit('image', imageData);
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+
+      // Initialize and show emoji picker
+      document.getElementById('emojiButton').addEventListener('click', () => {
+        emojiPicker.togglePicker(document.getElementById('emojiContainer'));
       });
     });
   </script>
